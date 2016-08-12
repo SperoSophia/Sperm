@@ -1,7 +1,7 @@
 # Sperm
 SPERM - Surprisingly Practical Extendable Rest Module
 
-<img align="right" src="https://github.com/SperoSophia/Sperm/blob/master/web/sperm.png" />
+<img src="https://raw.githubusercontent.com/SperoSophia/Sperm/master/web/sperm.png" align="right" />
 
 After years of playing with ASP.NET both classical, MVC & WebAPI even touched Nancy at a point.
 I wanted something different. Something that fit in to our current ways of writing extendable web applications.
