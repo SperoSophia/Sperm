@@ -9,7 +9,7 @@ namespace Sperm
     {
         private readonly RequestDelegate _next;
 
-        public SpermMiddleWare(RequestDelegate next)
+        public SpermMiddleWare(RequestDelegate next) 
         {
             _next = next;
         }
