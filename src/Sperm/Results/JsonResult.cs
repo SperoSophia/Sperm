@@ -1,10 +1,13 @@
 ﻿
 
+using Microsoft.AspNetCore.Http;
+using Sperm.Utils;
+
 namespace Sperm
 {
     public class JsonResult : BaseResult
     {
-        /*private object _result;
+        private object _result;
 
         public JsonResult(object result)
         {
@@ -18,12 +21,14 @@ namespace Sperm
 
             if (_result == null)
             {
-                context.Response.Write("null");
+                byte[] buffer = System.Text.Encoding.UTF8.GetBytes("null");
+                context.Response.Body.Write(buffer, 0, buffer.Length);
             }
             else
             {
-                context.Response.Write(JsonConvert.SerializeObject(_result));
+                byte[] buffer = System.Text.Encoding.UTF8.GetBytes(_result.ToJson());
+                context.Response.Body.Write(buffer, 0, buffer.Length);
             }
-        }*/
+        }
     }
 }

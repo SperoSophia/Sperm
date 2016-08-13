@@ -10,6 +10,7 @@ using System;
 using System.Security.Principal;
 using System.IO;
 using Sperm.Utils;
+using Microsoft.Extensions.DependencyModel;
 
 namespace Sperm
 {
@@ -22,21 +23,46 @@ namespace Sperm
         public SpermHandler(RequestDelegate next) 
         {
             _next = next;
+            Initialize(); 
+        }
+
+        internal IEnumerable<Assembly> GetAssemblies()
+        {
+            return GetReferencingAssemblies(Assembly.GetEntryAssembly().FullName);
+        }
+
+        internal IEnumerable<Assembly> GetReferencingAssemblies(string assemblyName)
+        {
+            var assemblies = new List<Assembly>();
+            var dependencies = DependencyContext.Default.RuntimeLibraries;
+            foreach (var library in dependencies)
+            {
+                if (IsCandidateLibrary(library, assemblyName))
+                {
+                    var assembly = Assembly.Load(new AssemblyName(library.Name));
+                    assemblies.Add(assembly);
+                }
+            }
+            return assemblies;
+        }
+
+        internal bool IsCandidateLibrary(RuntimeLibrary library, string assemblyName)
+        {
+            return library.Name == (assemblyName)
+                || library.Dependencies.Any(d => d.Name.StartsWith(assemblyName));
         }
 
         public void Initialize()
         {
             var routes = Routes = new List<RouteInfo>();
             var baseType = typeof(ISperm);
-            var types = new List<object>(); // Assembly.GetEntryAssembly().GetReferencedAssemblies().Where(x => x.ProcessorArchitecture); 
-                /*DependencyContext Assembly.GetEntryAssembly().GetReferencedAssemblies CurrentDomain.GetAssemblies().ToList()
-                .SelectMany(s => s.GetTypes())
-                .Where(p => baseType.IsAssignableFrom(p) && !p.IsAbstract);*/
+            var assemblies = GetAssemblies();
+            var types = assemblies.SelectMany(s => s.GetTypes()).Where(p => baseType.IsAssignableFrom(p) && !p.GetTypeInfo().IsAbstract);
 
-            /*foreach (var type in types)
+            foreach (var type in types)
             {
-                var authorize = (AuthorizeAttribute)type.GetCustomAttributes(typeof(AuthorizeAttribute), true).FirstOrDefault();
-                var baseurl = (BaseUrlAttribute)type.GetCustomAttributes(typeof(BaseUrlAttribute), true).FirstOrDefault();
+                var authorize = (AuthorizeAttribute)type.GetTypeInfo().GetCustomAttributes(typeof(AuthorizeAttribute), true).FirstOrDefault();
+                var baseurl = (BaseUrlAttribute)type.GetTypeInfo().GetCustomAttributes(typeof(BaseUrlAttribute), true).FirstOrDefault();
 
                 foreach (var method in type.GetMethods().Where(x => x.IsPublic))
                 {
@@ -46,7 +72,7 @@ namespace Sperm
                     {
                         var pars = method.GetParameters();
 
-                        var route = new RouteInfo(_mountedUrl, baseurl == null ? "" : baseurl.Path, attr.Path, pars);
+                        var route = new RouteInfo("", baseurl == null ? "" : baseurl.Path, attr.Path, pars);
                         route.Verb = attr.Verb;
                         route.Module = type;
                         route.MethodInfo = method;
@@ -76,17 +102,108 @@ namespace Sperm
                         routes.Add(route);
                     }
                 }
+            }
+        }
+
+        internal void ProcessRequest(HttpContext context)
+        {
+            var verb = context.Request.Method.ToUpper();
+            var reqUri = context.Request.Path.Value;
+            var baseUri = context.Request.PathBase.Value;
+            var path = Regex.Replace(reqUri.Substring(baseUri.Length), @"^(.+)/$", "$1");
+
+            if (string.IsNullOrEmpty(path)) path = "/"; // if empty path, its /
+            if (!path.StartsWith("/")) path = "/" + path; // path must start with /
+
+            // debug
+            /*if (path == "/wsdl" && context.Request.IsLocal)
+            {
+                new JsonResult(Routes).Execute(context);
+                return;
             }*/
+
+            Sperm instance = null;
+
+            try
+            {
+                Match match;
+                var ri = GetRouteInfo(verb, path, out match);
+
+                // validate authorize and roles
+                ri.ValidateAuthorizeAndRoles(context.User);
+
+                // get method parameter to execute
+                var args = ri.GetMethodParameters(match, context);
+
+                // create object instance
+                instance = (Sperm)Activator.CreateInstance(ri.Module);
+
+                // before execute
+                instance.OnExecuting(ri.MethodInfo, args);
+
+                // execute method
+                var obj = ri.MethodInfo.Invoke(instance, args);
+
+                // if result is BaseResult, use it, otherwise, convert to JsonResult
+                var result = (BaseResult)obj; // is BaseResult ? (BaseResult)obj : new JsonResult(obj);
+
+                // After execute, passing Method + BaseResult
+                instance.OnExecuted(ri.MethodInfo, result);
+
+                // rendering result (when result == null is void)
+                if (result != null)
+                {
+                    result.Execute(context);
+                }
+            }
+            catch (TargetInvocationException ex)
+            {
+                if (instance != null)
+                {
+                    instance.OnException(ex.InnerException);
+                }
+                new ErrorResult(ex.InnerException).Execute(context);
+            }
+            catch (Exception ex)
+            {
+                if (instance != null)
+                {
+                    instance.OnException(ex);
+                }
+                new ErrorResult(ex).Execute(context);
+            }
+            finally
+            {
+                if (instance != null)
+                {
+                    instance.Dispose();
+                }
+            }
+        }
+
+        internal static RouteInfo GetRouteInfo(string verb, string path, out Match match)
+        {
+            var ex = new HttpException(404, "Not found");
+
+            foreach (var m in Routes)
+            {
+                match = m.Pattern.Match(path);
+
+                if (!match.Success) continue; // not found, read next
+
+                ex = new HttpException(405, "Method Not Allowed");
+
+                if (m.Verb != verb) continue; // found but not with the same method, continue searching
+
+                return m;
+            }
+
+            throw ex;
         }
 
         public async Task Invoke(HttpContext context)
         {
-            var obj = new Sperm().Html("Test html");
-
-            // if result is BaseResult, use it, otherwise, convert to JsonResult
-            var result = obj; // is BaseResult ? (BaseResult)obj : new JsonResult(obj);
-
-            result.Execute(context);
+            ProcessRequest(context);
         }
     }
 
