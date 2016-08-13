@@ -6,13 +6,6 @@ using System.Reflection;
 
 namespace Sperm
 {
-    /*public class SperManager
-    {
-        public static SperManager global = new SperManager();
-
-        
-    }*/
-
     public static class PluginArchitecture
     {
         // List of interface our plugin accepts from external libraries.
@@ -129,7 +122,7 @@ namespace Sperm
             }
             return result.ToArray();
         }
-        public static IoCRegistry[] Register(string filename) { return Register(Assembly.Load(filename)); }
+        //public static IoCRegistry[] Register(string filename) { return Register(Assembly.Load(filename)); } // [BUG] .NET Core Restrictions.
 
         #endregion
         #region Resolve
