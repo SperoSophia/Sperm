@@ -26,7 +26,16 @@ namespace Sperm
             Initialize(); 
         }
 
-        public void Initialize()
+        public void RegisterViewEngines()
+        {
+            var types = Assembly.GetEntryAssembly().AllTypesOf(typeof(IViewEngine));
+            foreach(var type in types)
+            {
+                Ceed.Register(typeof(IViewEngine), type, type.Name, IoCLifeTime.Singleton);
+            }
+        }
+
+        public void Initialize_routes()
         {
             var routes = Routes = new List<RouteInfo>();
             var types = Assembly.GetEntryAssembly().AllTypesOf(typeof(ISperm));
@@ -75,6 +84,12 @@ namespace Sperm
                     }
                 }
             }
+        }
+
+        public void Initialize()
+        {
+            RegisterViewEngines();
+            Initialize_routes();
         }
 
         internal void ProcessRequest(HttpContext context)

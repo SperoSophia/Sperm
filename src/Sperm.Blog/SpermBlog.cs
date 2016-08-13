@@ -5,6 +5,12 @@ using System.Threading.Tasks;
 
 namespace Sperm.Blog
 {
+    public class Post
+    {
+        public string Title { get; set; }
+        public string Body { get; set; }
+    }
+
     [BaseUrl("")]
     public class SpermBlog : Sperm
     {
@@ -16,10 +22,11 @@ namespace Sperm.Blog
             return Html("Hello World");
         }
 
-        [Get("/totally")]
+        [Get("/blog")]
         public TextResult Hello2()
         {
-            return Html("Hello 2 World");
+            Post p = new Post { Title = "Test Title", Body = "Testing the body as well." };
+            return View("Post", p);
         }
     }
 }

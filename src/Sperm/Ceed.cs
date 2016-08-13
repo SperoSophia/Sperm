@@ -137,15 +137,30 @@ namespace Sperm
             return (T)Resolve(typeof(T));
         }
 
+        public static IEnumerable<T> ResolveMany<T>()
+        {
+            IEnumerable<IoCRegistry> ResolutionTypes = implementations.Where(x => x.Contract == typeof(T));
+            List<T> result = new List<T>();
+            foreach(IoCRegistry r in ResolutionTypes)
+            {
+                result.Add((T)Resolve(r));
+            }
+            return result;
+        }
+
+        public static object Resolve(Type contract)
+        {
+            IoCRegistry ResolutionType = implementations.FirstOrDefault(x => x.Contract == contract);
+            return Resolve(ResolutionType);
+        }
+
         /// <summary>
         /// Resolve the contract using its constructor
         /// </summary>
         /// <param name="contract"></param>
         /// <returns></returns>
-        public static object Resolve(Type contract)
+        public static object Resolve(IoCRegistry ResolutionType)
         {
-            IoCRegistry ResolutionType = implementations.FirstOrDefault(x => x.Contract == contract);
-
             // if single instance
             if (ResolutionType.LifeTime == IoCLifeTime.Singleton)
             {

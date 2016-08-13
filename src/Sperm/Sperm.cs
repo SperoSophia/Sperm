@@ -16,9 +16,10 @@ namespace Sperm
         BaseResult Status(HttpStatusCode statusCode);
         BaseResult Status(int statusCode);
         TextResult Html(string html);
+        TextResult View(string view, object model);
     }
 
-    public class Sperm : ISperm
+    public partial class Sperm : ISperm
     {
         public Sperm() { }
         public virtual void OnException(Exception ex) { }
@@ -51,6 +52,32 @@ namespace Sperm
             result.StatusCode = (int)HttpStatusCode.OK;
             result.ContentType = "text/html";
             return result;
+        }
+
+        public TextResult View(string view, object model)
+        {
+            IEnumerable<IViewEngine> engines = Ceed.ResolveMany<IViewEngine>();
+            string viewExtension = "";
+            try
+            {
+                viewExtension = System.IO.Path.GetExtension(view);
+            }
+            catch { }
+            if(!string.IsNullOrEmpty(viewExtension))
+            {
+                engines = engines.Where(x => x.EmbeededViews == false && x.Extension.Contains(viewExtension) == false);
+            }
+            var engine = engines.FirstOrDefault();
+            if (engine == null)
+                throw new Exception("No View Engines Registered");
+
+            try
+            {
+                return Html(engine.Render(view, model));
+            } catch
+            {
+                throw new Exception("Unable to render using the registered view engine. You might have to many engines registered at the same time.");
+            }
         }
     }
 }
