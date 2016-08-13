@@ -13,7 +13,13 @@ namespace Sperm.Blog
         [Get("/")]
         public TextResult Hello()
         {
-            return new TextResult("Hello World");
+            return Html("Hello World");
+        }
+
+        [Get("/totally")]
+        public TextResult Hello2()
+        {
+            return Html("Hello 2 World");
         }
     }
 }

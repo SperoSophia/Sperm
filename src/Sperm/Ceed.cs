@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Reflection;
+using Microsoft.Extensions.DependencyModel;
 
 namespace Sperm
 {
@@ -47,7 +48,7 @@ namespace Sperm
         }
     }
 
-    public static class SperManager
+    public static class Ceed
     {
         /// <summary>
         /// A dataset of the implementations of contracts.
@@ -179,5 +180,43 @@ namespace Sperm
             return inst;
         }
         #endregion
+    }
+
+    public static class NETCoreAssemblyExtension
+    {
+        public static IEnumerable<Assembly> GetReferencingAssemblies(this Assembly self)
+        {
+            return GetReferencingAssemblies(self.FullName);
+        }
+
+        public static IEnumerable<Assembly> GetReferencingAssemblies(string assemblyName)
+        {
+            var assemblies = new List<Assembly>();
+            var dependencies = DependencyContext.Default.RuntimeLibraries;
+            foreach (var library in dependencies)
+            {
+                if (IsCandidateLibrary(library, assemblyName))
+                {
+                    var assembly = Assembly.Load(new AssemblyName(library.Name));
+                    assemblies.Add(assembly);
+                }
+            }
+            var SpermAssembly = typeof(ISperm).GetTypeInfo().Assembly;
+            if(!assemblies.Any(x => x.FullName == SpermAssembly.FullName))
+            {
+                assemblies.Add(SpermAssembly);
+            }
+            return assemblies;
+        }
+
+        public static bool IsCandidateLibrary(RuntimeLibrary library, string assemblyName)
+        {
+            return library.Name == (assemblyName) || library.Dependencies.Any(d => d.Name == "Sperm");
+        }
+
+        public static Type[] AllTypesOf(this Assembly self, Type baseType)
+        {
+            return self.GetReferencingAssemblies().SelectMany(s => s.GetTypes()).Where(p => baseType.IsAssignableFrom(p) && !p.GetTypeInfo().IsAbstract).ToArray();
+        }
     }
 }

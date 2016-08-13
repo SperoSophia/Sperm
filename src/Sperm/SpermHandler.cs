@@ -26,38 +26,10 @@ namespace Sperm
             Initialize(); 
         }
 
-        internal IEnumerable<Assembly> GetAssemblies()
-        {
-            return GetReferencingAssemblies(Assembly.GetEntryAssembly().FullName);
-        }
-
-        internal IEnumerable<Assembly> GetReferencingAssemblies(string assemblyName)
-        {
-            var assemblies = new List<Assembly>();
-            var dependencies = DependencyContext.Default.RuntimeLibraries;
-            foreach (var library in dependencies)
-            {
-                if (IsCandidateLibrary(library, assemblyName))
-                {
-                    var assembly = Assembly.Load(new AssemblyName(library.Name));
-                    assemblies.Add(assembly);
-                }
-            }
-            return assemblies;
-        }
-
-        internal bool IsCandidateLibrary(RuntimeLibrary library, string assemblyName)
-        {
-            return library.Name == (assemblyName)
-                || library.Dependencies.Any(d => d.Name.StartsWith(assemblyName));
-        }
-
         public void Initialize()
         {
             var routes = Routes = new List<RouteInfo>();
-            var baseType = typeof(ISperm);
-            var assemblies = GetAssemblies();
-            var types = assemblies.SelectMany(s => s.GetTypes()).Where(p => baseType.IsAssignableFrom(p) && !p.GetTypeInfo().IsAbstract);
+            var types = Assembly.GetEntryAssembly().AllTypesOf(typeof(ISperm));
 
             foreach (var type in types)
             {
