@@ -81,7 +81,7 @@ namespace Sperm
 
         public async Task Invoke(HttpContext context)
         {
-            var obj = new SperModule().Html("Test html");
+            var obj = new Sperm().Html("Test html");
 
             // if result is BaseResult, use it, otherwise, convert to JsonResult
             var result = obj; // is BaseResult ? (BaseResult)obj : new JsonResult(obj);

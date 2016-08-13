@@ -18,9 +18,9 @@ namespace Sperm
         TextResult Html(string html);
     }
 
-    public class SperModule : ISperm
+    public class Sperm : ISperm
     {
-        public SperModule() { }
+        public Sperm() { }
         public virtual void OnException(Exception ex) { }
         public virtual void OnExecuting(MethodInfo methodInfo, object[] args) { }
         public virtual void OnExecuted(MethodInfo methodInfo, BaseResult result) { }
